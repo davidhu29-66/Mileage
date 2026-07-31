@@ -3,9 +3,10 @@
 // this file re-implements the exact same interface using the browser's real
 // localStorage. The app component itself never needs to know the difference.
 //
-// Note: unlike Claude's version, this storage is per-browser/per-device only
-// (it won't sync across your phone and laptop) and the "shared" flag is
-// ignored since there's no multi-user backend here.
+// Note: this storage is per-browser/per-device only (it won't sync across your
+// phone and laptop) and the "shared" flag is ignored since there's no
+// multi-user backend here. If you want cross-device sync, see the sibling
+// "database" version of this app instead.
 
 function keyFor(key, shared) {
   return `mileage-app:${shared ? "shared" : "personal"}:${key}`;
