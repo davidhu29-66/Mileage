@@ -122,7 +122,7 @@ export default function MileageLogger() {
   const [loading, setLoading] = useState(true);
   const [trips, setTrips] = useState([]);
   const [locations, setLocations] = useState(DEFAULT_LOCATIONS);
-  const [nodeRedUrl, setNodeRedUrl] = useState("");
+  const [nodeRedUrl, setNodeRedUrl] = useState("/api/submit");
   const [nodeRedEnabled, setNodeRedEnabled] = useState(false);
   const [tab, setTab] = useState("log");
   const [toast, setToast] = useState(null);
