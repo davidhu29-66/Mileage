@@ -3,6 +3,7 @@ import {
   Gauge, Clock, Plus, X, Trash2, Settings as SettingsIcon,
   List, BarChart3, ChevronLeft, ChevronRight, Briefcase, Home as HomeIcon,
   Download, ArrowRight, AlertTriangle, Check, Car, LocateFixed, MapPin, Receipt,
+  Radio, Send,
 } from "lucide-react";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell,
@@ -121,6 +122,8 @@ export default function MileageLogger() {
   const [loading, setLoading] = useState(true);
   const [trips, setTrips] = useState([]);
   const [locations, setLocations] = useState(DEFAULT_LOCATIONS);
+  const [nodeRedUrl, setNodeRedUrl] = useState("");
+  const [nodeRedEnabled, setNodeRedEnabled] = useState(false);
   const [tab, setTab] = useState("log");
   const [toast, setToast] = useState(null);
 
@@ -147,6 +150,14 @@ export default function MileageLogger() {
       } catch (e) {
         setLocations(DEFAULT_LOCATIONS);
       }
+      try {
+        const res = await window.storage.get("settings", false);
+        const s = res ? JSON.parse(res.value) : {};
+        setNodeRedUrl(s.nodeRedUrl || "");
+        setNodeRedEnabled(!!s.nodeRedEnabled);
+      } catch (e) {
+        // no settings saved yet — defaults are fine
+      }
       setLoading(false);
     })();
   }, []);
@@ -171,6 +182,38 @@ export default function MileageLogger() {
       await window.storage.set("locations", JSON.stringify(next), false);
     } catch (e) {
       showToast("error", "Couldn't save that location.");
+    }
+  }
+
+  async function persistSettings(next) {
+    const merged = { nodeRedUrl, nodeRedEnabled, ...next };
+    if ("nodeRedUrl" in next) setNodeRedUrl(next.nodeRedUrl);
+    if ("nodeRedEnabled" in next) setNodeRedEnabled(next.nodeRedEnabled);
+    try {
+      await window.storage.set("settings", JSON.stringify(merged), false);
+    } catch (e) {
+      showToast("error", "Couldn't save settings.");
+    }
+  }
+
+  // Best-effort push to a Node-RED HTTP-in endpoint. Never blocks trip saving
+  // and never surfaces its own errors as a save failure — logging a trip
+  // should always succeed locally even if the webhook is unreachable (site's
+  // offline, Node-RED restarting, wrong LAN IP, etc). Returns true/false so the
+  // Settings screen's "Send test ping" button can report success explicitly.
+  async function syncToNodeRed(payload, { force = false } = {}) {
+    if (!force && !nodeRedEnabled) return false;
+    if (!nodeRedUrl.trim()) return false;
+    try {
+      const res = await fetch(nodeRedUrl.trim(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, sentAt: new Date().toISOString() }),
+      });
+      return res.ok;
+    } catch (e) {
+      console.warn("Node-RED sync failed:", e);
+      return false;
     }
   }
 
@@ -235,47 +278,49 @@ export default function MileageLogger() {
     upsertLocation(data.fromLocation, data.fromLocationCoords?.lat, data.fromLocationCoords?.lng);
     setShowStart(false);
     showToast("success", "Trip started — safe driving.");
+    syncToNodeRed({ event: "trip_started", trip });
   }
 
   function endTrip(id, data) {
-    const next = trips.map((t) =>
-      t.id === id
-        ? {
-            ...t, timeIn: data.timeIn, mileageIn: Number(data.mileageIn), toLocation: data.toLocation,
-            jobNumber: data.jobNumber || "", siteNotes: data.siteNotes || "",
-          }
-        : t
-    );
+    const updated = {
+      ...trips.find((t) => t.id === id),
+      timeIn: data.timeIn, mileageIn: Number(data.mileageIn), toLocation: data.toLocation,
+      jobNumber: data.jobNumber || "", siteNotes: data.siteNotes || "",
+    };
+    const next = trips.map((t) => (t.id === id ? updated : t));
     persistTrips(next);
     upsertLocation(data.toLocation, data.toLocationCoords?.lat, data.toLocationCoords?.lng);
     setShowEnd(false);
     showToast("success", "Trip logged.");
+    syncToNodeRed({ event: "trip_completed", trip: updated });
   }
 
   function saveFullTrip(data, existingId) {
     if (existingId) {
-      const next = trips.map((t) =>
-        t.id === existingId
-          ? {
-              ...t,
-              date: data.date,
-              timeOut: data.timeOut,
-              mileageOut: Number(data.mileageOut),
-              fromLocation: data.fromLocation,
-              timeIn: data.timeIn,
-              mileageIn: Number(data.mileageIn),
-              toLocation: data.toLocation,
-              category: data.category,
-              businessType: data.category === "business" ? data.businessType : null,
-              client: data.category === "business" && data.businessType === "chargeable" ? (data.client || "") : "",
-              purpose: data.purpose || "",
-              jobNumber: data.jobNumber || "",
-              siteNotes: data.siteNotes || "",
-            }
-          : t
-      );
+      let updated = null;
+      const next = trips.map((t) => {
+        if (t.id !== existingId) return t;
+        updated = {
+          ...t,
+          date: data.date,
+          timeOut: data.timeOut,
+          mileageOut: Number(data.mileageOut),
+          fromLocation: data.fromLocation,
+          timeIn: data.timeIn,
+          mileageIn: Number(data.mileageIn),
+          toLocation: data.toLocation,
+          category: data.category,
+          businessType: data.category === "business" ? data.businessType : null,
+          client: data.category === "business" && data.businessType === "chargeable" ? (data.client || "") : "",
+          purpose: data.purpose || "",
+          jobNumber: data.jobNumber || "",
+          siteNotes: data.siteNotes || "",
+        };
+        return updated;
+      });
       persistTrips(next);
       showToast("success", "Trip updated.");
+      syncToNodeRed({ event: "trip_updated", trip: updated });
     } else {
       const trip = {
         id: uid(),
@@ -295,6 +340,7 @@ export default function MileageLogger() {
       };
       persistTrips([...trips, trip]);
       showToast("success", "Trip added.");
+      syncToNodeRed({ event: "trip_completed", trip });
     }
     upsertLocation(data.fromLocation, data.fromLocationCoords?.lat, data.fromLocationCoords?.lng);
     upsertLocation(data.toLocation, data.toLocationCoords?.lat, data.toLocationCoords?.lng);
@@ -306,6 +352,7 @@ export default function MileageLogger() {
     persistTrips(trips.filter((t) => t.id !== id));
     setConfirmDelete(null);
     showToast("success", "Trip deleted.");
+    syncToNodeRed({ event: "trip_deleted", tripId: id });
   }
 
   if (loading) {
@@ -351,6 +398,12 @@ export default function MileageLogger() {
             onRemoveLocation={(name) => persistLocations(locations.filter((l) => l.name !== name))}
             onPinLocation={(name, lat, lng) => upsertLocation(name, lat, lng)}
             trips={trips}
+            nodeRedUrl={nodeRedUrl}
+            nodeRedEnabled={nodeRedEnabled}
+            onNodeRedUrlChange={(url) => persistSettings({ nodeRedUrl: url })}
+            onNodeRedEnabledChange={(enabled) => persistSettings({ nodeRedEnabled: enabled })}
+            onTestPing={() => syncToNodeRed({ event: "test", message: "Hello from Mileage Logger" }, { force: true })}
+            onSyncAll={() => syncToNodeRed({ event: "full_sync", trips }, { force: true })}
           />
         )}
       </main>
@@ -798,10 +851,16 @@ function StatCard({ label, value, sub, accent }) {
   );
 }
 
-function SettingsTab({ locations, onAddLocation, onRemoveLocation, onPinLocation, trips }) {
+function SettingsTab({
+  locations, onAddLocation, onRemoveLocation, onPinLocation, trips,
+  nodeRedUrl, nodeRedEnabled, onNodeRedUrlChange, onNodeRedEnabledChange, onTestPing, onSyncAll,
+}) {
   const [newLoc, setNewLoc] = useState("");
   const [pinningName, setPinningName] = useState(null);
   const [pinError, setPinError] = useState("");
+  const [urlDraft, setUrlDraft] = useState(nodeRedUrl);
+  const [pingStatus, setPingStatus] = useState(null); // null | "sending" | "ok" | "fail"
+  const [syncStatus, setSyncStatus] = useState(null);
 
   async function handlePin(name) {
     setPinningName(name);
@@ -813,6 +872,20 @@ function SettingsTab({ locations, onAddLocation, onRemoveLocation, onPinLocation
       setPinError(`Couldn't get your location for "${name}".`);
     }
     setPinningName(null);
+  }
+
+  async function handleTestPing() {
+    setPingStatus("sending");
+    const ok = await onTestPing();
+    setPingStatus(ok ? "ok" : "fail");
+    setTimeout(() => setPingStatus(null), 3000);
+  }
+
+  async function handleSyncAll() {
+    setSyncStatus("sending");
+    const ok = await onSyncAll();
+    setSyncStatus(ok ? "ok" : "fail");
+    setTimeout(() => setSyncStatus(null), 3000);
   }
 
   return (
@@ -856,6 +929,60 @@ function SettingsTab({ locations, onAddLocation, onRemoveLocation, onPinLocation
             Add
           </button>
         </div>
+      </div>
+
+      <div className="rounded-2xl bg-slate-900 border border-slate-800 p-4">
+        <div className="flex items-center justify-between mb-1">
+          <div className="text-sm font-semibold text-slate-300 flex items-center gap-1.5">
+            <Radio size={14} className="text-sky-400" /> Node-RED sync
+          </div>
+          <button
+            onClick={() => onNodeRedEnabledChange(!nodeRedEnabled)}
+            className={`w-11 h-6 rounded-full shrink-0 flex items-center px-0.5 transition-colors ${nodeRedEnabled ? "bg-emerald-500 justify-end" : "bg-slate-700 justify-start"}`}
+          >
+            <span className="w-5 h-5 rounded-full bg-white" />
+          </button>
+        </div>
+        <div className="text-xs text-slate-500 mb-3">
+          When enabled, every trip start/end/edit/delete gets POSTed as JSON to an HTTP-in node on your
+          flow — point it at whatever endpoint your Node-RED instance exposes. Runs best-effort in the
+          background; trips still save locally even if the webhook is unreachable.
+        </div>
+        <Field label="Webhook URL">
+          <input
+            value={urlDraft}
+            onChange={(e) => setUrlDraft(e.target.value)}
+            onBlur={() => onNodeRedUrlChange(urlDraft)}
+            placeholder="http://192.168.1.50:1880/mileage"
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 placeholder-slate-500 outline-none focus:border-sky-400/50 font-mono"
+            inputMode="url"
+            autoCapitalize="none"
+            autoCorrect="off"
+          />
+        </Field>
+        <div className="grid grid-cols-2 gap-2 mt-1">
+          <button
+            onClick={handleTestPing}
+            disabled={!urlDraft.trim() || pingStatus === "sending"}
+            className="py-2.5 rounded-xl bg-slate-800 text-slate-200 text-sm font-medium flex items-center justify-center gap-2 active:scale-95 disabled:opacity-40"
+          >
+            <Send size={13} />
+            {pingStatus === "sending" ? "Sending…" : pingStatus === "ok" ? "Sent ✓" : pingStatus === "fail" ? "Failed" : "Send test ping"}
+          </button>
+          <button
+            onClick={handleSyncAll}
+            disabled={!urlDraft.trim() || syncStatus === "sending"}
+            className="py-2.5 rounded-xl bg-sky-400/10 border border-sky-400/30 text-sky-400 text-sm font-medium flex items-center justify-center gap-2 active:scale-95 disabled:opacity-40"
+          >
+            <Radio size={13} />
+            {syncStatus === "sending" ? "Syncing…" : syncStatus === "ok" ? "Synced ✓" : syncStatus === "fail" ? "Failed" : `Sync all ${trips.length}`}
+          </button>
+        </div>
+        {(pingStatus === "fail" || syncStatus === "fail") && (
+          <div className="text-rose-400 text-xs flex items-center gap-1.5 mt-2">
+            <AlertTriangle size={13} /> Couldn't reach that URL — check the address and that Node-RED's HTTP-in node allows requests from this browser (CORS).
+          </div>
+        )}
       </div>
 
       <div className="rounded-2xl bg-slate-900 border border-slate-800 p-4">
