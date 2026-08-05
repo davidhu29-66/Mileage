@@ -85,6 +85,16 @@ function formatDuration(minutes) {
   return `${h}h ${String(m).padStart(2, "0")}m`;
 }
 
+// Full-screen mood art per trip type, shown behind the Start/End/Full Trip
+// modals. Lives in /public/backgrounds — swap the files there to restyle.
+function bgForCategory(category, businessType) {
+  if (category === "private") return "/backgrounds/pvt-mileage.jpg";
+  if (category === "business") {
+    return businessType === "chargeable" ? "/backgrounds/charge-mileage.jpg" : "/backgrounds/admin-mileage.jpg";
+  }
+  return null;
+}
+
 // A "site visit" isn't stored directly — it's derived from two consecutive
 // completed trips where one arrives somewhere and the very next trip departs
 // from that same place. The time between them is time on site.
@@ -122,7 +132,7 @@ export default function MileageLogger() {
   const [loading, setLoading] = useState(true);
   const [trips, setTrips] = useState([]);
   const [locations, setLocations] = useState(DEFAULT_LOCATIONS);
-  const [nodeRedUrl, setNodeRedUrl] = useState("/api/submit");
+  const [nodeRedUrl, setNodeRedUrl] = useState("");
   const [nodeRedEnabled, setNodeRedEnabled] = useState(false);
   const [tab, setTab] = useState("log");
   const [toast, setToast] = useState(null);
@@ -201,13 +211,22 @@ export default function MileageLogger() {
   // should always succeed locally even if the webhook is unreachable (site's
   // offline, Node-RED restarting, wrong LAN IP, etc). Returns true/false so the
   // Settings screen's "Send test ping" button can report success explicitly.
+  //
+  // Content-Type is deliberately "text/plain", not "application/json" — the
+  // body is still a JSON string, but application/json makes this a
+  // CORS-"non-simple" request, which triggers a preflight OPTIONS check.
+  // Node-RED's core "http in" node cannot register an OPTIONS route at all
+  // (it's genuinely not in the node — not a config thing), so that preflight
+  // always 404s and the browser blocks the real POST before it ever reaches
+  // Node-RED. text/plain is a CORS-"simple" content type, so it skips
+  // preflight entirely. The receiving flow does JSON.parse(msg.payload).
   async function syncToNodeRed(payload, { force = false } = {}) {
     if (!force && !nodeRedEnabled) return false;
     if (!nodeRedUrl.trim()) return false;
     try {
       const res = await fetch(nodeRedUrl.trim(), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain" },
         body: JSON.stringify({ ...payload, sentAt: new Date().toISOString() }),
       });
       return res.ok;
@@ -1032,25 +1051,34 @@ function BottomNav({ tab, setTab, onQuickAdd, activeTrip }) {
   );
 }
 
-function Modal({ title, onClose, children, footer }) {
+function Modal({ title, onClose, children, footer, bgImage }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60" onClick={onClose}>
       <div
-        className="w-full max-w-md bg-slate-900 rounded-t-3xl border-t border-slate-700 flex flex-col"
+        className="w-full max-w-md rounded-t-3xl border-t border-slate-700 relative overflow-hidden"
         style={{ maxHeight: "88vh" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-center pt-2.5">
-          <div className="w-9 h-1 rounded-full bg-slate-700" />
+        <div className="absolute inset-0 bg-slate-900" />
+        {bgImage && (
+          <>
+            <img src={bgImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-slate-950/85" />
+          </>
+        )}
+        <div className="relative flex flex-col" style={{ maxHeight: "88vh" }}>
+          <div className="flex justify-center pt-2.5">
+            <div className="w-9 h-1 rounded-full bg-slate-700" />
+          </div>
+          <div className="flex items-center justify-between px-5 pt-3 pb-2">
+            <span className="font-bold text-slate-100">{title}</span>
+            <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center">
+              <X size={15} className="text-slate-400" />
+            </button>
+          </div>
+          <div className="px-5 pb-3 overflow-y-auto no-scrollbar">{children}</div>
+          {footer && <div className="px-5 pb-6 pt-2 border-t border-slate-800">{footer}</div>}
         </div>
-        <div className="flex items-center justify-between px-5 pt-3 pb-2">
-          <span className="font-bold text-slate-100">{title}</span>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center">
-            <X size={15} className="text-slate-400" />
-          </button>
-        </div>
-        <div className="px-5 pb-3 overflow-y-auto no-scrollbar">{children}</div>
-        {footer && <div className="px-5 pb-6 pt-2 border-t border-slate-800">{footer}</div>}
       </div>
     </div>
   );
@@ -1221,6 +1249,7 @@ function StartTripModal({ locations, suggestedMileage, onClose, onSave }) {
     <Modal
       title="Start Trip"
       onClose={onClose}
+      bgImage={bgForCategory(category, businessType)}
       footer={
         <button onClick={submit} className="w-full py-3.5 rounded-xl bg-amber-400 text-slate-950 font-bold flex items-center justify-center gap-2">
           <Check size={16} /> Start Trip
@@ -1275,6 +1304,7 @@ function EndTripModal({ trip, locations, onClose, onSave }) {
     <Modal
       title="End Trip"
       onClose={onClose}
+      bgImage={bgForCategory(trip.category, trip.businessType)}
       footer={
         <div>
           {km !== null && km >= 0 && (
@@ -1353,6 +1383,7 @@ function FullTripModal({ locations, initial, onClose, onSave, onDelete }) {
     <Modal
       title={initial ? "Edit Trip" : "Log a Completed Trip"}
       onClose={onClose}
+      bgImage={bgForCategory(category, businessType)}
       footer={
         <div>
           {km !== null && (
