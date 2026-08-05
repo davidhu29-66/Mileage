@@ -24,6 +24,27 @@ Trips are saved in your browser's `localStorage`, keyed to whichever device/brow
 - Clearing site data/cache in that browser will erase your trips.
 - Use the **Export CSV** buttons in the Summary tab regularly as a backup outside the browser.
 
+## Node-RED sync
+
+Settings tab has a "Node-RED sync" toggle. When on, every trip start/end/edit/delete gets POSTed
+as JSON to a webhook URL you enter (e.g. `http://192.168.1.50:1880/mileage`) — point it at an
+HTTP-in node on any flow. There's also a "Send test ping" button and a "Sync all" button to push
+every stored trip at once. It's fire-and-forget: a failed or unreachable webhook never blocks or
+breaks trip saving locally.
+
+The request is sent as `Content-Type: text/plain` (body is still a JSON string) specifically to
+avoid CORS preflight, since Node-RED's core `http in` node can't register an OPTIONS route at all.
+Your flow needs `JSON.parse(msg.payload)` and should set `Access-Control-Allow-Origin: *` on the
+response. A ready-to-import demo flow (`node-red-demo-flow.json`) is included — see the database
+version's README for full setup details and payload shapes, since both share the same component.
+
+## Background art
+
+Start Trip, End Trip, and Log/Edit Trip show a full-screen background themed to the trip's
+category (Admin / Chargeable / Private), live-swapping as you toggle category. A dark scrim keeps
+text and inputs fully readable. Images live in `public/backgrounds/` — see the database version's
+README for the full breakdown, since both share the same component.
+
 ## Features
 
 - Start/End Trip flow with GPS location matching (Settings → pin your frequent sites for auto-match)
