@@ -95,9 +95,23 @@ function bgForCategory(category, businessType) {
   return null;
 }
 
+// The app-wide persistent background: "on the move" (mileage art) while a
+// trip is active, "at rest" (time art) once you've arrived somewhere.
+// Chargeable has no dedicated "at rest" asset of its own — time spent at a
+// client site uses the generic Time on site image instead.
+function bgForCategoryAtRest(category, businessType) {
+  if (category === "private") return "/backgrounds/pvt-time.jpg";
+  if (category === "business") {
+    return businessType === "chargeable" ? "/backgrounds/time-onsite.jpg" : "/backgrounds/admin-time.jpg";
+  }
+  return null;
+}
+
 // A "site visit" isn't stored directly — it's derived from two consecutive
 // completed trips where one arrives somewhere and the very next trip departs
 // from that same place. The time between them is time on site.
+// Private arrivals (home, personal stops) are deliberately excluded — this
+// list feeds job/billing tracking, not personal time.
 function computeSiteVisits(trips) {
   const completed = trips.filter((t) => t.mileageIn !== null);
   const sorted = [...completed].sort((a, b) => (sortKey(a) < sortKey(b) ? -1 : 1));
@@ -105,6 +119,7 @@ function computeSiteVisits(trips) {
   for (let i = 0; i < sorted.length - 1; i++) {
     const arrival = sorted[i];
     const next = sorted[i + 1];
+    if (arrival.category === "private") continue;
     if (!arrival.toLocation || next.fromLocation !== arrival.toLocation) continue;
     const arrivalDT = new Date(`${arrival.date}T${arrival.timeIn}`);
     const departureDT = new Date(`${next.date}T${next.timeOut}`);
@@ -265,6 +280,16 @@ export default function MileageLogger() {
     return null;
   }, [trips]);
 
+  // Whole-app mood background: "on the move" while a trip is active,
+  // "at rest" once you've arrived and ended it — reflecting where you
+  // actually are right now, not just what's open in a modal.
+  const appBgImage = useMemo(() => {
+    if (activeTrip) return bgForCategory(activeTrip.category, activeTrip.businessType);
+    const lastCompleted = sortedTrips.find((t) => t.mileageIn !== null);
+    if (!lastCompleted) return null;
+    return bgForCategoryAtRest(lastCompleted.category, lastCompleted.businessType);
+  }, [activeTrip, sortedTrips]);
+
   function upsertLocation(name, lat, lng) {
     const clean = (name || "").trim();
     if (!clean) return;
@@ -383,7 +408,7 @@ export default function MileageLogger() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col" style={{ fontFamily: "'Manrope', sans-serif" }}>
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col relative" style={{ fontFamily: "'Manrope', sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
         .font-odo { font-family: 'Space Mono', monospace; font-variant-numeric: tabular-nums; }
@@ -391,7 +416,15 @@ export default function MileageLogger() {
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      <Header lastMileage={lastMileage} lastMileageMeta={lastMileageMeta} activeTrip={activeTrip} />
+      {appBgImage && (
+        <>
+          <img src={appBgImage} alt="" className="fixed inset-0 w-full h-full object-cover" />
+          <div className="fixed inset-0 bg-gradient-to-b from-slate-950/85 via-slate-950/45 to-slate-950/75" />
+        </>
+      )}
+
+      <div className="relative flex flex-col min-h-screen">
+        <Header lastMileage={lastMileage} lastMileageMeta={lastMileageMeta} activeTrip={activeTrip} />
 
       <main className="flex-1 overflow-y-auto pb-24 px-4 pt-4 no-scrollbar">
         {tab === "log" && (
@@ -428,6 +461,7 @@ export default function MileageLogger() {
       </main>
 
       <BottomNav tab={tab} setTab={setTab} onQuickAdd={() => (activeTrip ? setShowEnd(true) : setShowStart(true))} activeTrip={activeTrip} />
+      </div>
 
       {showStart && (
         <StartTripModal
@@ -469,7 +503,7 @@ export default function MileageLogger() {
 
 function Header({ lastMileage, lastMileageMeta, activeTrip }) {
   return (
-    <div className="px-5 pt-6 pb-5 bg-gradient-to-b from-slate-900 to-slate-950 border-b border-slate-800">
+    <div className="px-5 pt-6 pb-5 border-b border-slate-800/60">
       <div className="flex items-center justify-between mb-3">
         <div className="flex flex-col gap-1">
           <img src="/logo.png" alt="Company logo" className="h-8 w-auto object-contain object-left" />
@@ -1063,7 +1097,7 @@ function Modal({ title, onClose, children, footer, bgImage }) {
         {bgImage && (
           <>
             <img src={bgImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-slate-950/85" />
+            <div className="absolute inset-0 bg-slate-950/70" />
           </>
         )}
         <div className="relative flex flex-col" style={{ maxHeight: "88vh" }}>
