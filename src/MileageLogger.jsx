@@ -534,7 +534,7 @@ function LogTab({ activeTrip, recentTrips, onStart, onEnd, onFull, onViewAll, on
   return (
     <div className="space-y-4">
       {activeTrip ? (
-        <div className="rounded-2xl bg-slate-900 border border-emerald-400/20 p-4">
+        <div className="rounded-2xl bg-slate-900/50 border border-emerald-400/20 p-4">
           <div className="flex items-center gap-2 text-emerald-400 text-xs font-semibold uppercase tracking-wide mb-3">
             <Clock size={14} /> Trip in progress
           </div>
@@ -568,12 +568,12 @@ function LogTab({ activeTrip, recentTrips, onStart, onEnd, onFull, onViewAll, on
 
       <button
         onClick={onFull}
-        className="w-full py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 font-semibold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform"
+        className="w-full py-3 rounded-xl bg-slate-900/50 border border-slate-800/60 text-slate-300 font-semibold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform"
       >
         <Plus size={16} /> Log a completed trip
       </button>
 
-      <div className="rounded-2xl bg-slate-900 border border-slate-800 p-4">
+      <div className="rounded-2xl bg-slate-900/50 border border-slate-800/60 p-4">
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-semibold text-slate-300">Recent trips</span>
           <button onClick={onViewAll} className="text-xs text-amber-400 font-medium flex items-center gap-0.5">
@@ -768,14 +768,14 @@ function SummaryTab({ trips }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <button onClick={() => setMonthOffset((m) => m - 1)} className="w-9 h-9 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center active:scale-95">
+        <button onClick={() => setMonthOffset((m) => m - 1)} className="w-9 h-9 rounded-full bg-slate-900/50 border border-slate-800/60 flex items-center justify-center active:scale-95">
           <ChevronLeft size={16} className="text-slate-400" />
         </button>
         <span className="font-semibold text-slate-200 text-sm">{monthLabel(ym)}</span>
         <button
           onClick={() => setMonthOffset((m) => Math.min(0, m + 1))}
           disabled={monthOffset >= 0}
-          className="w-9 h-9 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center active:scale-95 disabled:opacity-30"
+          className="w-9 h-9 rounded-full bg-slate-900/50 border border-slate-800/60 flex items-center justify-center active:scale-95 disabled:opacity-30"
         >
           <ChevronRight size={16} className="text-slate-400" />
         </button>
@@ -798,7 +798,7 @@ function SummaryTab({ trips }) {
       )}
 
       {clientRows.length > 0 && (
-        <div className="rounded-2xl bg-slate-900 border border-slate-800 p-4">
+        <div className="rounded-2xl bg-slate-900/50 border border-slate-800/60 p-4">
           <div className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-1.5">
             <Receipt size={14} className="text-sky-400" /> Chargeable by client
           </div>
@@ -813,7 +813,7 @@ function SummaryTab({ trips }) {
         </div>
       )}
 
-      <div className="rounded-2xl bg-slate-900 border border-slate-800 p-4">
+      <div className="rounded-2xl bg-slate-900/50 border border-slate-800/60 p-4">
         <div className="flex items-center justify-between mb-1">
           <span className="text-sm font-semibold text-slate-300">Business use</span>
           <span className="font-odo text-sm text-amber-400 font-bold">{bizPct}%</span>
@@ -824,7 +824,7 @@ function SummaryTab({ trips }) {
       </div>
 
       {chartData.length > 0 && (
-        <div className="rounded-2xl bg-slate-900 border border-slate-800 p-4">
+        <div className="rounded-2xl bg-slate-900/50 border border-slate-800/60 p-4">
           <div className="text-sm font-semibold text-slate-300 mb-3">Daily km</div>
           <div style={{ width: "100%", height: 160 }}>
             <ResponsiveContainer>
@@ -847,7 +847,7 @@ function SummaryTab({ trips }) {
       )}
 
       {monthSiteVisits.length > 0 && (
-        <div className="rounded-2xl bg-slate-900 border border-slate-800 p-4">
+        <div className="rounded-2xl bg-slate-900/50 border border-slate-800/60 p-4">
           <div className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-1.5">
             <Clock size={14} className="text-amber-400" /> Time on site
           </div>
@@ -869,7 +869,7 @@ function SummaryTab({ trips }) {
         </div>
       )}
 
-      <div className="rounded-2xl bg-slate-900 border border-slate-800 p-4 space-y-2">
+      <div className="rounded-2xl bg-slate-900/50 border border-slate-800/60 p-4 space-y-2">
         <div className="text-sm font-semibold text-slate-300 mb-1">Export for tax / reimbursement</div>
         <button onClick={() => exportCsv("all")} className="w-full py-2.5 rounded-xl bg-slate-800 text-slate-200 text-sm font-medium flex items-center justify-center gap-2 active:scale-95">
           <Download size={14} /> All trips (CSV)
@@ -896,7 +896,7 @@ function StatCard({ label, value, sub, accent }) {
     accent === "slate" ? "text-slate-300" :
     "text-slate-100";
   return (
-    <div className="rounded-2xl bg-slate-900 border border-slate-800 p-3">
+    <div className="rounded-2xl bg-slate-900/50 border border-slate-800/60 p-3">
       <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">{label}</div>
       <div className={`font-odo text-lg font-bold ${color}`}>{value}</div>
       <div className="text-xs text-slate-500">{sub}</div>
@@ -943,7 +943,7 @@ function SettingsTab({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl bg-slate-900 border border-slate-800 p-4">
+      <div className="rounded-2xl bg-slate-900/50 border border-slate-800/60 p-4">
         <div className="text-sm font-semibold text-slate-300 mb-1">Saved locations</div>
         <div className="text-xs text-slate-500 mb-3">
           Locations with a pinned GPS spot get auto-matched when you use "Use current location" on a trip.
@@ -984,7 +984,7 @@ function SettingsTab({
         </div>
       </div>
 
-      <div className="rounded-2xl bg-slate-900 border border-slate-800 p-4">
+      <div className="rounded-2xl bg-slate-900/50 border border-slate-800/60 p-4">
         <div className="flex items-center justify-between mb-1">
           <div className="text-sm font-semibold text-slate-300 flex items-center gap-1.5">
             <Radio size={14} className="text-sky-400" /> Node-RED sync
@@ -1038,7 +1038,7 @@ function SettingsTab({
         )}
       </div>
 
-      <div className="rounded-2xl bg-slate-900 border border-slate-800 p-4">
+      <div className="rounded-2xl bg-slate-900/50 border border-slate-800/60 p-4">
         <div className="text-sm font-semibold text-slate-300 mb-1">Your data</div>
         <div className="text-xs text-slate-500 mb-3">
           {trips.length} trip{trips.length === 1 ? "" : "s"} stored, saved automatically as you go.
