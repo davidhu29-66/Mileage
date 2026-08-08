@@ -573,39 +573,43 @@ function TripRow({ trip, onClick, compact }) {
   const isBiz = trip.category === "business";
   const isChargeable = isBiz && trip.businessType === "chargeable";
   const km = trip.mileageIn !== null ? trip.mileageIn - trip.mileageOut : null;
-  const iconWrapCls = isChargeable ? "bg-sky-950 text-sky-400" : isBiz ? "bg-emerald-950 text-emerald-400" : "bg-rose-950 text-rose-400";
+  
+  // High-transparency tint for the icon badges
+  const iconWrapCls = isChargeable ? "bg-sky-500/15 text-sky-400" : isBiz ? "bg-emerald-500/15 text-emerald-400" : "bg-rose-500/15 text-rose-400";
+  
   return (
     <button
       onClick={onClick}
-      className="w-full text-left rounded-xl bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 p-3 flex items-center gap-3 transition-colors"
+      /* bg-slate-900/25 gives that sheer translucent glass fill */
+      className="w-full text-left rounded-2xl bg-slate-900/25 border border-slate-700/30 p-3.5 flex items-center gap-3 transition-colors active:bg-slate-900/40"
     >
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${iconWrapCls}`}>
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${iconWrapCls}`}>
         {isChargeable ? (
-          <Receipt size={15} />
+          <Receipt size={16} />
         ) : isBiz ? (
-          <Briefcase size={15} />
+          <Briefcase size={16} />
         ) : (
-          <HomeIcon size={15} />
+          <HomeIcon size={16} />
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1 text-sm font-medium text-slate-100 truncate">
+        <div className="flex items-center gap-1.5 text-base font-medium text-slate-100 truncate">
           <span className="truncate">{trip.fromLocation}</span>
-          <ArrowRight size={11} className="text-slate-500 shrink-0" />
+          <ArrowRight size={12} className="text-slate-400 shrink-0" />
           <span className="truncate">{trip.toLocation || "—"}</span>
         </div>
-        <div className="text-xs text-slate-400">
+        <div className="text-xs text-slate-400 mt-0.5">
           {fmtDateLong(trip.date)}{!compact ? ` · ${trip.timeOut}–${trip.timeIn || "…"}` : ""}
           {isBiz && trip.businessType && (
             <span className={isChargeable ? "text-sky-400 font-medium" : "text-slate-400"}>
-              {" "}· {isChargeable ? `Chargeable${trip.client ? " — " + trip.client : ""}` : "Admin"}
+              {" "}· {isChargeable ? `Chargeable — ${trip.client || "SBM"}` : "Admin"}
             </span>
           )}
           {trip.jobNumber && <span className="text-amber-400 font-medium"> · Job #{trip.jobNumber}</span>}
         </div>
       </div>
-      <div className="text-right shrink-0">
-        <div className="font-odo text-sm font-semibold text-slate-100">{km !== null ? fmtKm(km) : "…"}</div>
+      <div className="text-right shrink-0 pl-2">
+        <div className="font-odo text-base font-bold text-slate-100">{km !== null ? fmtKm(km) : "0"}</div>
         <div className="text-xs text-slate-400">km</div>
       </div>
     </button>
