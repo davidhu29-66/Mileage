@@ -24,6 +24,12 @@ Trips are saved in your browser's `localStorage`, keyed to whichever device/brow
 - Clearing site data/cache in that browser will erase your trips.
 - Use the **Export CSV** buttons in the Summary tab regularly as a backup outside the browser.
 
+## Weekly timesheet
+
+Settings → Weekly timesheet: set name/region once, then tap "Generate last week's timesheet" any
+time — fills the HR-018 template entirely in-browser (ExcelJS, lazy-loaded) and downloads it. See
+the database version's README for the full breakdown of how KM/HRS/columns are sourced.
+
 ## Node-RED sync
 
 Settings tab has a "Node-RED sync" toggle. When on, every trip start/end/edit/delete gets POSTed
@@ -38,12 +44,17 @@ Your flow needs `JSON.parse(msg.payload)` and should set `Access-Control-Allow-O
 response. A ready-to-import demo flow (`node-red-demo-flow.json`) is included — see the database
 version's README for full setup details and payload shapes, since both share the same component.
 
+## Chargeable clients
+
+Settings → Chargeable clients manages the fixed list you pick from for Chargeable trips (replaces
+free text). Existing trips auto-migrate their client names into this list on first load.
+
 ## Background art
 
-Start Trip, End Trip, and Log/Edit Trip show a full-screen background themed to the trip's
-category (Admin / Chargeable / Private), live-swapping as you toggle category. A dark scrim keeps
-text and inputs fully readable. Images live in `public/backgrounds/` — see the database version's
-README for the full breakdown, since both share the same component.
+The whole app's background reflects where you actually are right now: mileage art while a trip's
+active, "at rest" art (matching the last completed trip's category) once it's ended. Private
+arrivals no longer count toward Time on site tracking either. Images live in `public/backgrounds/`
+— see the database version's README for the full breakdown, since both share the same component.
 
 ## Features
 
