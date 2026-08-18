@@ -24,6 +24,12 @@ Trips are saved in your browser's `localStorage`, keyed to whichever device/brow
 - Clearing site data/cache in that browser will erase your trips.
 - Use the **Export CSV** buttons in the Summary tab regularly as a backup outside the browser.
 
+## Backfilling a work session
+
+History interleaves trips and work sessions chronologically, with a "Log a work session" button
+for backfilling a job you couldn't toggle live — same fields as Time On/Off, treated identically
+by the timesheet generator either way.
+
 ## Weekly timesheet
 
 Settings → Weekly timesheet: set name/region once, then tap "Generate last week's timesheet" any
