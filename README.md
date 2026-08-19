@@ -24,6 +24,12 @@ Trips are saved in your browser's `localStorage`, keyed to whichever device/brow
 - Clearing site data/cache in that browser will erase your trips.
 - Use the **Export CSV** buttons in the Summary tab regularly as a backup outside the browser.
 
+## Importing historical trips
+
+Settings → "Import trips from CSV" — for consolidating older records into the same trip history.
+Expects the app's own CSV export column format. Shows a preview before committing; duplicates
+(same date/time-out/odometer-out) are skipped automatically.
+
 ## Backfilling a work session
 
 History interleaves trips and work sessions chronologically, with a "Log a work session" button
